@@ -1,0 +1,379 @@
+--[[
+    Project: AnhDepZai Hub (Combined Edition + Auto-Update)
+    Developer: anh2k9VN
+    Features: Custom UI Menu + Infinity Jump + Fly + Noclip + Speed Boost + Auto-Update
+]]--
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- ====================================================
+-- 0. TÍNH NĂNG TỰ ĐỘNG CẬP NHẬT (AUTO-UPDATE)
+-- ====================================================
+local CURRENT_VERSION = "1.0" -- Phiên bản hiện tại của script
+-- Thay đường dẫn bên dưới bằng link Raw GitHub hoặc Pastebin chứa mã nguồn script mới nhất của bạn
+local SCRIPT_URL = "https://raw.githubusercontent.com/anh2k9VN/AnhDepZaiHub/main/main.lua" 
+local VERSION_URL = "https://raw.githubusercontent.com/anh2k9VN/AnhDepZaiHub/main/version.txt"
+
+task.spawn(function()
+    local success, remoteVersion = pcall(function()
+        return game:HttpGet(VERSION_URL)
+    end)
+    
+    if success and remoteVersion then
+        remoteVersion = remoteVersion:gsub("%s+", "") -- Xóa khoảng trắng thừa
+        if remoteVersion ~= CURRENT_VERSION then
+            print("[AnhDepZai Hub] Phát hiện phiên bản mới! Đang tự động cập nhật...")
+            local updateSuccess, newScript = pcall(function()
+                return game:HttpGet(SCRIPT_URL)
+            end)
+            if updateSuccess and newScript then
+                -- Thực thi script mới ngay lập tức
+                pcall(function()
+                    loadstring(newScript)()
+                end)
+                print("[AnhDepZai Hub] Cập nhật thành công phiên bản mới!")
+                return
+            end
+        else
+            print("[AnhDepZai Hub] Script đang ở phiên bản mới nhất (" .. CURRENT_VERSION .. ").")
+        end
+    else
+        print("[AnhDepZai Hub] Không thể kiểm tra cập nhật (Kiểm tra lại kết nối hoặc URL).")
+    end
+end)
+
+-- Xóa GUI cũ nếu đã tồn tại để tránh trùng lặp
+if CoreGui:FindFirstChild("AnhDepZaiHub") then
+    CoreGui.AnhDepZaiHub:Destroy()
+end
+
+-- Tạo ScreenGui chính
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AnhDepZaiHub"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+-- ====================================================
+-- 1. NÚT MỞ/ĐÓNG MENU CHÍNH (NỔI TRÊN MÀN HÌNH)
+-- ====================================================
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.BorderColor3 = Color3.fromRGB(0, 170, 255)
+ToggleButton.BorderSizePixel = 2
+ToggleButton.Position = UDim2.new(0, 20, 0, 150)
+ToggleButton.Size = UDim2.new(0, 130, 0, 40)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "AnhDepZai Hub"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 14
+ToggleButton.Draggable = true
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 6)
+ToggleCorner.Parent = ToggleButton
+
+-- ====================================================
+-- 2. KHUNG MENU CHÍNH
+-- ====================================================
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 170, 255)
+MainFrame.BorderSizePixel = 2
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 320, 0, 350)
+MainFrame.Visible = true
+MainFrame.Draggable = true
+MainFrame.Active = true
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+-- Tiêu đề Menu
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Text = "⚡ AnhDepZai Hub (Dev: anh2k9VN) ⚡"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+TitleLabel.TextSize = 14
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = TitleLabel
+
+-- Hiển thị thông tin người dùng
+local UserInfoLabel = Instance.new("TextLabel")
+UserInfoLabel.Parent = MainFrame
+UserInfoLabel.BackgroundTransparency = 1
+UserInfoLabel.Position = UDim2.new(0, 10, 0, 42)
+UserInfoLabel.Size = UDim2.new(1, -20, 0, 40)
+UserInfoLabel.Font = Enum.Font.SourceSans
+UserInfoLabel.Text = string.format("User: %s (@%s)\nID: %d", LocalPlayer.DisplayName, LocalPlayer.Name, LocalPlayer.UserId)
+UserInfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+UserInfoLabel.TextSize = 12
+UserInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ====================================================
+-- 3. TÍNH NĂNG 1: INFINITY JUMP
+-- ====================================================
+local JumpToggleBtn = Instance.new("TextButton")
+JumpToggleBtn.Parent = MainFrame
+JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+JumpToggleBtn.BorderSizePixel = 0
+JumpToggleBtn.Position = UDim2.new(0, 15, 0, 90)
+JumpToggleBtn.Size = UDim2.new(1, -30, 0, 35)
+JumpToggleBtn.Font = Enum.Font.SourceSansBold
+JumpToggleBtn.Text = "Infinity Jump: BẬT"
+JumpToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpToggleBtn.TextSize = 13
+
+local JumpCorner = Instance.new("UICorner")
+JumpCorner.CornerRadius = UDim.new(0, 6)
+JumpCorner.Parent = JumpToggleBtn
+
+local infinityJumpEnabled = true
+JumpToggleBtn.MouseButton1Click:Connect(function()
+    infinityJumpEnabled = not infinityJumpEnabled
+    if infinityJumpEnabled then
+        JumpToggleBtn.Text = "Infinity Jump: BẬT"
+        JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    else
+        JumpToggleBtn.Text = "Infinity Jump: TẮT"
+        JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infinityJumpEnabled then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+-- ====================================================
+-- 4. TÍNH NĂNG 2: FLY + NOCLIP
+-- ====================================================
+local FlyToggleBtn = Instance.new("TextButton")
+FlyToggleBtn.Parent = MainFrame
+FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+FlyToggleBtn.BorderSizePixel = 0
+FlyToggleBtn.Position = UDim2.new(0, 15, 0, 135)
+FlyToggleBtn.Size = UDim2.new(1, -30, 0, 35)
+FlyToggleBtn.Font = Enum.Font.SourceSansBold
+FlyToggleBtn.Text = "Fly: OFF"
+FlyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyToggleBtn.TextSize = 13
+
+local FlyCorner = Instance.new("UICorner")
+FlyCorner.CornerRadius = UDim.new(0, 6)
+FlyCorner.Parent = FlyToggleBtn
+
+local flying = false
+local flySpeed = 50
+local character, humanoidRootPart, humanoid
+local bodyVel, bodyGyro
+
+local function updateCharacter(newChar)
+    character = newChar
+    humanoidRootPart = newChar:WaitForChild("HumanoidRootPart", 5)
+    humanoid = newChar:WaitForChild("Humanoid", 5)
+    
+    if flying then
+        flying = false
+        FlyToggleBtn.Text = "Fly: OFF"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end
+
+if LocalPlayer.Character then
+    updateCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(updateCharacter)
+
+local function toggleFly()
+    if not character or not humanoidRootPart or not humanoid then return end
+    
+    flying = not flying
+    if flying then
+        FlyToggleBtn.Text = "Fly: ON"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        
+        bodyVel = Instance.new("BodyVelocity")
+        bodyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bodyVel.Velocity = Vector3.new(0, 0, 0)
+        bodyVel.Parent = humanoidRootPart
+        
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bodyGyro.CFrame = humanoidRootPart.CFrame
+        bodyGyro.Parent = humanoidRootPart
+        
+        humanoid.PlatformStand = true
+    else
+        FlyToggleBtn.Text = "Fly: OFF"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        
+        if bodyVel then bodyVel:Destroy() bodyVel = nil end
+        if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+        if humanoid then humanoid.PlatformStand = false end
+        
+        if character then
+            for _, v in pairs(character:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+FlyToggleBtn.MouseButton1Click:Connect(toggleFly)
+
+-- ====================================================
+-- 5. TÍNH NĂNG 3: SPEED BOOST
+-- ====================================================
+local SpeedToggleBtn = Instance.new("TextButton")
+SpeedToggleBtn.Parent = MainFrame
+SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+SpeedToggleBtn.BorderSizePixel = 0
+SpeedToggleBtn.Position = UDim2.new(0, 15, 0, 180)
+SpeedToggleBtn.Size = UDim2.new(0.6, -10, 0, 35)
+SpeedToggleBtn.Font = Enum.Font.SourceSansBold
+SpeedToggleBtn.Text = "Tốc độ: OFF"
+SpeedToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedToggleBtn.TextSize = 13
+
+local SpeedBtnCorner = Instance.new("UICorner")
+SpeedBtnCorner.CornerRadius = UDim.new(0, 6)
+SpeedBtnCorner.Parent = SpeedToggleBtn
+
+local SpeedTextBox = Instance.new("TextBox")
+SpeedTextBox.Parent = MainFrame
+SpeedTextBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SpeedTextBox.BorderSizePixel = 0
+SpeedTextBox.Position = UDim2.new(0.6, 20, 0, 180)
+SpeedTextBox.Size = UDim2.new(0.4, -30, 0, 35)
+SpeedTextBox.Font = Enum.Font.SourceSans
+SpeedTextBox.Text = "100"
+SpeedTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedTextBox.TextSize = 13
+
+local SpeedBoxCorner = Instance.new("UICorner")
+SpeedBoxCorner.CornerRadius = UDim.new(0, 6)
+SpeedBoxCorner.Parent = SpeedTextBox
+
+local speedEnabled = false
+local speedValue = 100
+
+SpeedToggleBtn.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    if speedEnabled then
+        SpeedToggleBtn.Text = "Tốc độ: ON"
+        SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+    else
+        SpeedToggleBtn.Text = "Tốc độ: OFF"
+        SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+    end
+end)
+
+SpeedTextBox.FocusLost:Connect(function()
+    local num = tonumber(SpeedTextBox.Text)
+    if num then
+        speedValue = num
+    else
+        SpeedTextBox.Text = tostring(speedValue)
+    end
+end)
+
+-- ====================================================
+-- 6. NÚT ĐÓNG / ẨN MENU
+-- ====================================================
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = MainFrame
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Position = UDim2.new(0, 15, 0, 295)
+CloseBtn.Size = UDim2.new(1, -30, 0, 35)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Text = "Ẩn Menu"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 13
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+-- ====================================================
+-- 7. RUNSERVICE CẬP NHẬT LIÊN TỤC (FLY, NOCLIP, SPEED)
+-- ====================================================
+RunService.Stepped:Connect(function()
+    if flying and character then
+        for _, v in pairs(character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if flying and character and humanoidRootPart and humanoid and bodyVel and bodyGyro then
+        local cam = workspace.CurrentCamera
+        local velocity = Vector3.new(0, 0, 0)
+        
+        local moveDir = humanoid.MoveDirection
+        if moveDir.Magnitude > 0 then
+            local relativeDir = cam.CFrame:VectorToObjectSpace(moveDir)
+            velocity = (cam.CFrame.LookVector * -relativeDir.Z + cam.CFrame.RightVector * relativeDir.X) * flySpeed
+        end
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then velocity = velocity + (cam.CFrame.LookVector * flySpeed) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then velocity = velocity - (cam.CFrame.LookVector * flySpeed) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then velocity = velocity - (cam.CFrame.RightVector * flySpeed) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then velocity = velocity + (cam.CEnd and cam.CFrame.RightVector * flySpeed or cam.CFrame.RightVector * flySpeed) end
+
+        bodyVel.Velocity = velocity
+        bodyGyro.CFrame = bodyGyro.CFrame:Lerp(cam.CFrame, 0.2)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if speedEnabled then
+            pcall(function()
+                local character = LocalPlayer.Character
+                if character then
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        humanoid.WalkSpeed = speedValue
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+print("[AnhDepZai Hub] Khởi chạy thành công bởi anh2k9VN!")
+
