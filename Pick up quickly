@@ -1,0 +1,171 @@
+local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Xóa menu cũ nếu có để tránh bị trùng lặp
+if playerGui:FindFirstChild("AnhDepZaiHubPickup") then
+    playerGui.AnhDepZaiHubPickup:Destroy()
+end
+
+-- Tạo ScreenGui chứa Menu
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AnhDepZaiHubPickup"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Khung chính của Menu (Main Frame)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 160)
+frame.Position = UDim2.new(0.5, -110, 0.4, -80)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Tiêu đề Menu mang thương hiệu anhdepzai hub 🇻🇳
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -40, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "ANHDEPZAI HUB 🇻🇳"
+title.TextColor3 = Color3.fromRGB(255, 215, 0) -- Màu vàng nổi bật
+title.TextSize = 13
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame
+
+-- Nút Đóng/Ẩn menu chính (Nút X đỏ)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -32, 0, 8)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 12
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = frame
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
+
+-- Nút nổi hiển thị giờ Việt Nam (UTC+7) khi menu chính bị ẩn
+local floatBtn = Instance.new("TextButton")
+floatBtn.Size = UDim2.new(0, 145, 0, 35)
+floatBtn.Position = UDim2.new(0, 20, 0.5, -20)
+floatBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+floatBtn.Text = "Anhdepzai Hub 🇻🇳 | 00:00:00"
+floatBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
+floatBtn.TextSize = 12
+floatBtn.Font = Enum.Font.GothamBold
+floatBtn.Active = true
+floatBtn.Draggable = true
+floatBtn.Visible = false -- Ban đầu ẩn vì menu chính đang hiện
+floatBtn.Parent = screenGui
+Instance.new("UICorner", floatBtn).CornerRadius = UDim.new(0, 6)
+
+-- Cập nhật đồng hồ giờ Việt Nam theo thời gian thực (UTC+7)
+task.spawn(function()
+    while task.wait(1) do
+        -- Lấy giờ chuẩn Việt Nam (UTC + 7 giờ = 25200 giây)
+        local vietnamTime = os.date("!*t", os.time() + 25200)
+        local timeString = string.format("%02d:%02d:%02d", vietnamTime.hour, vietnamTime.min, vietnamTime.sec)
+        floatBtn.Text = "Anhdepzai Hub 🇻🇳 | " .. timeString
+    end
+end)
+
+-- Xử lý ẩn/hiện menu
+closeBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    floatBtn.Visible = true
+end)
+
+floatBtn.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    floatBtn.Visible = false
+end)
+
+-- Trạng thái tính năng
+local instantPromptEnabled = false
+local autoMagnetEnabled = false
+
+-- Nút 1: Instant Prompt
+local btnPrompt = Instance.new("TextButton")
+btnPrompt.Size = UDim2.new(0.9, 0, 0, 35)
+btnPrompt.Position = UDim2.new(0.05, 0, 0, 45)
+btnPrompt.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+btnPrompt.Text = "Instant Prompt: OFF"
+btnPrompt.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnPrompt.TextSize = 12
+btnPrompt.Font = Enum.Font.Gotham
+btnPrompt.Parent = frame
+Instance.new("UICorner", btnPrompt).CornerRadius = UDim.new(0, 6)
+
+-- Nút 2: Auto Magnet
+local btnMagnet = Instance.new("TextButton")
+btnMagnet.Size = UDim2.new(0.9, 0, 0, 35)
+btnMagnet.Position = UDim2.new(0.05, 0, 0, 90)
+btnMagnet.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+btnMagnet.Text = "Auto Magnet: OFF"
+btnMagnet.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnMagnet.TextSize = 12
+btnMagnet.Font = Enum.Font.Gotham
+btnMagnet.Parent = frame
+Instance.new("UICorner", btnMagnet).CornerRadius = UDim.new(0, 6)
+
+-- Logic xử lý Instant Prompt
+local promptConnection
+btnPrompt.MouseButton1Click:Connect(function()
+    instantPromptEnabled = not instantPromptEnabled
+    if instantPromptEnabled then
+        btnPrompt.Text = "Instant Prompt: ON"
+        btnPrompt.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
+        
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ProximityPrompt") then
+                v.HoldDuration = 0
+            end
+        end
+        
+        promptConnection = ProximityPromptService.PromptAdded:Connect(function(prompt)
+            prompt.HoldDuration = 0
+        end)
+    else
+        btnPrompt.Text = "Instant Prompt: OFF"
+        btnPrompt.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        if promptConnection then
+            promptConnection:Disconnect()
+        end
+    end
+end)
+
+-- Logic xử lý Auto Magnet (Hút item chạm)
+task.spawn(function()
+    while task.wait(0.2) do
+        if autoMagnetEnabled then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local hrp = character.HumanoidRootPart
+                for _, item in ipairs(workspace:GetChildren()) do
+                    if item:IsA("BasePart") and item:FindFirstChild("TouchInterest") then
+                        item.CFrame = hrp.CFrame
+                    end
+                end
+            end
+        end
+    end
+end)
+
+btnMagnet.MouseButton1Click:Connect(function()
+    autoMagnetEnabled = not autoMagnetEnabled
+    if autoMagnetEnabled then
+        btnMagnet.Text = "Auto Magnet: ON"
+        btnMagnet.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
+    else
+        btnMagnet.Text = "Auto Magnet: OFF"
+        btnMagnet.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
+end)
