@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/hoangah245-dotcom/Hitbox-/dd3185b036beea5762cd5de0ae232c0a71285bd7/Hitbox%20player"))()
